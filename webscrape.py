@@ -1,19 +1,46 @@
 from bs4 import BeautifulSoup
+import pandas as pd
 import requests
 
+def extract(page):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36'}
+    url = f'https://www.indeed.com/jobs?q=python%20developer&l=Minnesota&start={page}'
+    r = requests.get(url, headers)
+    soup = BeautifulSoup(r.content, 'lxml')
+    return soup
 
 
-#html_text = requests.get('https://www.target.com/s?searchTerm=spinach').text
-#soup = BeautifulSoup(html_text, 'lxml')
-#spinach = soup.find_all('li', class_='Col-favj32-0 iXmsJV h-padding-a-none h-display-flex')
+def transform(soup):
+    divs = soup.find_all('div', class_='slider_container')
+    for item in divs:
+        job_title = item.find('h2').find(class_=None).text
+        company = item.find('span', class_='companyName').text
+        try:
+            salary = item.find('span', class_='salary-snippet').text
+        except:
+            salary = ''
+        summary = item.find('div', class_='job-snippet').text.strip().replace('\n',' ')
 
-html_text = requests.get('https://www.mlb.com/player/jorge-polanco-593871').text
-soup = BeautifulSoup(html_text, 'lxml')
-stats = soup.find('div', class_='player-splits__container')
-seven_days=''
-for i in range(11):
-    seven_days += stats.find('th', class_=f'no-sort col-{i}').text.replace('\n','') + ': '
-    seven_days += stats.find('td', class_=f'col-{i} row-0').text.replace('\n','') + '\n'
+        job = {
+            'title': job_title,
+            'company': company,
+            'salary': salary,
+            'summary': summary
+        }
+        joblist.append(job)
+    return
+
+joblist=[]
+for page in range(0, 40, 10):
+    print(f'Getting data on page: {page//10}')
+    c = extract(page)
+    transform(c)
+print(len(joblist))
 
 
-print(seven_days)
+job_listings_csv = pd.DataFrame(joblist)
+job_listings_csv.to_csv('jobs.csv')
+
+job_listings_excel = pd.DataFrame(joblist)
+job_listings_excel.to_excel('jobs.xlsx')
